@@ -17,6 +17,8 @@ import logging
 from flask import Flask
 import numpy as np
 import pandas as pd
+from pandas.io.json import json_normalize
+import requests
 
 app = Flask(__name__)
 
@@ -26,23 +28,6 @@ def calculate():
     return_str = ''
     x = np.array([[1, 2], [3, 4]])
     y = np.array([[5, 6], [7, 8]])
-    # data=pd.read_csv("day.csv")
-    # import statsmodels.formula.api as smf
-
-    # lm= smf.ols(formula= "cnt~weathersit", data=data).fit()
-    # #lm.params
-
-    # #lm.pvalues
-    # print(lm.rsquared)
-    # print(lm.rsquared_adj)
-
-    # print(lm.summary())
-
-
-    # print ( data.head() )
-    # #return_str += 'x: {} , y: {}<br />'.format(str(x), str(y))
-    # return_str += str(lm.rsquared) + ' , ' + str(lm.rsquared_adj)
-    # Multiply matrices
     return_str += 'x dot y : {}'.format(str(np.dot(x, y)))
     return return_str
 
@@ -52,12 +37,44 @@ def reglineal():
     return_str = ''
     data=pd.read_csv("day.csv")
     import statsmodels.formula.api as smf
+
     lm= smf.ols(formula= "cnt~weathersit", data=data).fit()
     lm.params
     print(lm.summary())
     return_str += str(lm.rsquared) + ' , ' + str(lm.rsquared_adj)
     return return_str
 
+@app.route('/ols')
+def ols():
+    return_str = 'ok'
+    #resp = requests.get('https://upheld-castle-251021.appspot.com/censos?entidad=30&municipio=118')
+    resp = requests.get('https://upheld-castle-251021.appspot.com/ols?entidad=30')
+    #resp = requests.get('http://localhost:10010/ols?entidad=30')
+    #resp = requests.get('https://upheld-castle-251021.appspot.com/entidades')
+   
+    if resp.status_code != 200:
+    # This means something went wrong.
+        raise ApiError('GET /tasks/ {}'.format(resp.status_code))
+    #for todo_item in resp.json():
+    #    print('{} {}'.format(todo_item['actividad_economica'], todo_item['ue']))
+        #return_str += '{} {}'.format(todo_item['cve_ent'], todo_item['entidad'])
+    data=json_normalize(resp.json())
+    df = data[['cve_mun', 'Internets.viviendas_acceso_internet', 'Idhs.idh']]
+    df.rename(columns={'Internets.viviendas_acceso_internet': 'internet'}, inplace=True)
+    df.rename(columns={'Idhs.idh': 'idh'}, inplace=True)
+
+ 
+    import statsmodels.formula.api as smf
+    print (df)
+    df.to_csv('data.csv')
+    #lm= smf.ols(formula= "internet~idh", data=df).fit()
+    #lm= smf.ols(data=df).fit()
+    
+    #print (lm.params)
+    #print(lm.summary())
+    #return_str += str(lm.rsquared) + ' , ' + str(lm.rsquared_adj)
+
+    return return_str
 
 @app.errorhandler(500)
 def server_error(e):
